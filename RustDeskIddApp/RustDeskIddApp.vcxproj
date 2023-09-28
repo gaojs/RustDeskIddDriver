@@ -85,6 +85,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>WindowsApplicationForDrivers10.0</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <TargetVersion>Windows10</TargetVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
