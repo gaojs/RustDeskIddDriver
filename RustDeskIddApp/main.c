@@ -33,7 +33,7 @@ int prompt_input()
     printf("       5. 'u'               5. uninstall driver\n");
     printf("       6. 'a'               6. plug in monitor\n");
     printf("       7. 'b'               7. plug out monitor\n");
-    printf("       8. 'r'               8. change resolution\n");
+    printf("       8. 's'               8. switch resolution\n");
     return _getch();
 }
 
@@ -122,10 +122,17 @@ int __cdecl main(int argc, char* argv[])
                 printf("Plug out monitor done\n");
             }
             break;
-        case 'r': {
+        case 's': { // switch
+            static BOOL smallFlag = FALSE;
             printf("Change resolution, current index %u\n", index - 1);
-            MonitorMode modes[] = {{800, 600, 30}, {600, 400, 30}};
-            if (!MonitorModesUpdate(index - 1, sizeof(modes) / sizeof(modes[0]), modes)) {
+            MonitorMode modesLarge[] = { { 1024,  768,  60 }, };
+            MonitorMode modesSmall[] = { { 800, 600, 30 },  };
+            MonitorMode *modes = modesLarge;
+            smallFlag = !smallFlag; // switch
+            if (smallFlag) {
+                modes = modesSmall;
+            }
+            if (!MonitorModesUpdate(index - 1, 1, modes)) {
                 printf(GetLastMsg());
             } else {
                 printf("Change resolution done\n");            
