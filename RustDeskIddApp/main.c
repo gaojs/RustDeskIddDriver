@@ -117,7 +117,8 @@ int __cdecl main(int argc, char* argv[])
             {
                 printf("Plug in monitor done\n");
 
-                MonitorMode modes[2] = { { 1920, 1080,  60 }, { 1024,  768,  60 }, };
+                // MonitorMode modes[2] = { { 1920, 1080,  60 }, { 1024,  768,  60 }, };
+                MonitorMode modes[] = { {1024,  768, 30}, };
                 if (FALSE == MonitorModesUpdate(index, sizeof(modes)/sizeof(modes[0]), modes))
                 {
                     printf(GetLastMsg());
