@@ -400,7 +400,7 @@ BOOL MonitorPlugOut(UINT index)
 
 BOOL MonitorModesUpdate(UINT index, UINT modeCount, PMonitorMode modes)
 {
-    SetLastMsg("Sucess");
+    SetLastMsg("Success");
 
     HANDLE hDevice = DeviceOpenHandle();
     if (hDevice == INVALID_HANDLE_VALUE || hDevice == NULL)
