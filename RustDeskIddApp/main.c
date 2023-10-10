@@ -97,7 +97,7 @@ int __cdecl main(int argc, char* argv[])
             break;
         case 'a':
             printf("Plug in monitor begin, current index %u\n", index);
-            if (!MonitorPlugIn(index, 0, 25)) {
+            if (!MonitorPlugIn(index, 0, 0)) {
                 printf(GetLastMsg());
             } else {
                 printf("Plug in monitor done\n");

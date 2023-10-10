@@ -593,11 +593,9 @@ BOOLEAN GetDevicePath2(
     _In_ size_t BufLen
 )
 {
-    HANDLE                              hDevice = INVALID_HANDLE_VALUE;
     PSP_DEVICE_INTERFACE_DETAIL_DATA    deviceInterfaceDetailData = NULL;
     ULONG                               predictedLength = 0;
     ULONG                               requiredLength = 0;
-    ULONG                               bytes;
     HDEVINFO                            hardwareDeviceInfo;
     SP_DEVICE_INTERFACE_DATA            deviceInterfaceData;
     BOOLEAN                             status = FALSE;
