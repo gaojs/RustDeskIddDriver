@@ -43,12 +43,12 @@ namespace Microsoft
             static constexpr size_t szModeList = 1;
 
             const BYTE pEdidBlock[szEdidBlock];
-            const struct SampleMonitorMode {
+            struct SampleMonitorMode {
                 DWORD Width;
                 DWORD Height;
                 DWORD VSync;
             } pModeList[szModeList];
-            const DWORD ulPreferredModeIdx;
+            DWORD ulPreferredModeIdx;
         };
 
         /// <summary>
