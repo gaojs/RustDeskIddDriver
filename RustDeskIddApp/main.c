@@ -41,11 +41,6 @@ int __cdecl main(int argc, char* argv[])
 {
     HSWDEVICE hSwDevice = NULL;
     BOOL bExit = FALSE;
-
-    DWORD width = 1920;
-    DWORD height = 1080;
-    DWORD sync = 60;
-
     UINT index = 0;
 
     TCHAR exePath[1024] = { 0, };
@@ -101,10 +96,6 @@ int __cdecl main(int argc, char* argv[])
                 printf(GetLastMsg());
             } else {
                 printf("Plug in monitor done\n");
-                MonitorMode mode = { 1920, 1080,  60 };
-                if (!MonitorModesUpdate(mode)) {
-                    printf(GetLastMsg());
-                }
                 index += 1;
             }
             break;
