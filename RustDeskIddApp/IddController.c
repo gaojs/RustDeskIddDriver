@@ -140,9 +140,8 @@ BOOL IsDeviceCreated(PBOOL created)
         return FALSE;
     }
 
-    SP_DEVICE_INTERFACE_DATA            deviceInterfaceData;
+    SP_DEVICE_INTERFACE_DATA deviceInterfaceData = {0};
     deviceInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
-
     BOOL ret = FALSE;
     do
     {
@@ -313,7 +312,7 @@ BOOL MonitorPlugIn(UINT index, UINT edid, INT retries)
 
     BOOL ret = FALSE;
     DWORD junk = 0;
-    CtlPlugIn plugIn;
+    CtlPlugIn plugIn = {0};
     plugIn.ConnectorIndex = index;
     plugIn.MonitorEDID = edid;
     HRESULT hr = CoCreateGuid(&plugIn.ContainerId);
@@ -369,7 +368,7 @@ BOOL MonitorPlugOut(UINT index)
 
     BOOL ret = FALSE;
     DWORD junk = 0;
-    CtlPlugOut plugOut;
+    CtlPlugOut plugOut = {0};
     plugOut.ConnectorIndex = index;
     if (!DeviceIoControl(
         hDevice,
@@ -398,62 +397,40 @@ BOOL MonitorPlugOut(UINT index)
     return ret;
 }
 
-BOOL MonitorModesUpdate(UINT index, UINT modeCount, PMonitorMode modes)
+BOOL MonitorModesUpdate(MonitorMode mode)
 {
     SetLastMsg("Success");
-
     HANDLE hDevice = DeviceOpenHandle();
-    if (hDevice == INVALID_HANDLE_VALUE || hDevice == NULL)
-    {
+    if (hDevice == INVALID_HANDLE_VALUE || hDevice == NULL) {
         return FALSE;
     }
 
     BOOL ret = FALSE;
     DWORD junk = 0;
-    size_t buflen = sizeof(UINT) * 2 + modeCount * sizeof(MonitorMode);
-    PCtlMonitorModes pMonitorModes = (PCtlMonitorModes)malloc(buflen);
-    if (pMonitorModes == NULL)
-    {
-        SetLastMsg("CtlMonitorModes malloc failed 0x%lx\n");
-        if (g_printMsg)
-        {
-            printf(g_lastMsg);
-        }
-        return FALSE;
-    }
-
-    pMonitorModes->ConnectorIndex = index;
-    pMonitorModes->ModeCount = modeCount;
-    for (UINT i = 0; i < modeCount; ++i)
-    {
-        pMonitorModes->Modes[i].Width = modes[i].width;
-        pMonitorModes->Modes[i].Height = modes[i].height;
-        pMonitorModes->Modes[i].Sync = modes[i].sync;
-    }
-    if (!DeviceIoControl(
-        hDevice,
+    size_t buflen = sizeof(CtlMonitorModes);
+    CtlMonitorModes monitorMode = {0};
+    monitorMode.ConnectorIndex = 0;
+    monitorMode.ModeCount = 1;
+    monitorMode.Modes[0].Height = mode.height;
+    monitorMode.Modes[0].Width = mode.width;
+    monitorMode.Modes[0].Sync = mode.sync;
+    if (!DeviceIoControl(hDevice,
         IOCTL_CHANGER_IDD_UPDATE_MONITOR_MODE,
-        pMonitorModes,               // Ptr to InBuffer
+        &monitorMode,               // Ptr to InBuffer
         buflen,                     // Length of InBuffer
         NULL,                       // Ptr to OutBuffer
         0,                          // Length of OutBuffer
         &junk,                      // BytesReturned
-        0))                         // Ptr to Overlapped structure
-    {
+        0)) {                       // Ptr to Overlapped structure
         DWORD error = GetLastError();
         SetLastMsg("DeviceIoControl failed 0x%lx\n", error);
-        if (g_printMsg)
-        {
+        if (g_printMsg) {
             printf(g_lastMsg);
         }
         ret = FALSE;
-    }
-    else
-    {
+    } else {
         ret = TRUE;
     }
-
-    free(pMonitorModes);
     DeviceCloseHandle(hDevice);
     return ret;
 }
@@ -466,9 +443,10 @@ CreationCallback(
     _In_opt_ PCWSTR pszDeviceInstanceId
 )
 {
-    HANDLE hEvent = *(HANDLE*)pContext;
-
-    SetEvent(hEvent);
+    if (pContext) {
+        HANDLE hEvent = *(HANDLE*) pContext;
+        SetEvent(hEvent);
+    }
     UNREFERENCED_PARAMETER(hSwDevice);
     UNREFERENCED_PARAMETER(hrCreateResult);
     // printf("Idd device %ls created\n", pszDeviceInstanceId);
@@ -596,8 +574,8 @@ BOOLEAN GetDevicePath2(
     PSP_DEVICE_INTERFACE_DETAIL_DATA    deviceInterfaceDetailData = NULL;
     ULONG                               predictedLength = 0;
     ULONG                               requiredLength = 0;
-    HDEVINFO                            hardwareDeviceInfo;
-    SP_DEVICE_INTERFACE_DATA            deviceInterfaceData;
+    HDEVINFO                            hardwareDeviceInfo = 0;
+    SP_DEVICE_INTERFACE_DATA            deviceInterfaceData ={0};
     BOOLEAN                             status = FALSE;
     HRESULT                             hr;
 

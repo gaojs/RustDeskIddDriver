@@ -40,14 +40,10 @@ using namespace Microsoft::WRL;
 
 #pragma region SampleMonitors
 
-static constexpr DWORD IDD_SAMPLE_MONITOR_COUNT = 3; // If monitor count > ARRAYSIZE(s_SampleMonitors), we create edid-less monitors
-
 // Default modes reported for edid-less monitors. The first mode is set as preferred
-static const struct IndirectSampleMonitor::SampleMonitorMode s_SampleDefaultModes[] = 
+static struct IndirectSampleMonitor::SampleMonitorMode s_SampleDefaultModes[] = 
 {
-    { 1920, 1080, 60 },
-    { 1600,  900, 60 },
-    { 1024,  768, 75 },
+    { 3840, 2160, 60 },
 };
 
 // FOR SAMPLE PURPOSES ONLY, Static info about monitors that will be reported to OS
@@ -65,30 +61,10 @@ static const struct IndirectSampleMonitor s_SampleMonitors[] =
             0x9B,0xFA,0xFA,0x40,0x01,0x0A,0x20,0x20,0x20,0x20,0x20,0x20,0x00,0x2C
         },
         {
-            { 2560, 1440, 144 },
-            { 1920, 1080,  60 },
-            { 1024,  768,  60 },
+            { 3840, 2160, 60 },
         },
         0
     },
-    // Modified EDID from Lenovo Y27fA
-    {
-        {
-            0x00,0xFF,0xFF,0xFF,0xFF,0xFF,0xFF,0x00,0x30,0xAE,0xBF,0x65,0x01,0x01,0x01,0x01,0x20,0x1A,0x01,
-            0x04,0xA5,0x3C,0x22,0x78,0x3B,0xEE,0xD1,0xA5,0x55,0x48,0x9B,0x26,0x12,0x50,0x54,0x00,0x08,0x00,
-            0xA9,0xC0,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x01,0x68,0xD8,0x00,
-            0x18,0xF1,0x70,0x2D,0x80,0x58,0x2C,0x45,0x00,0x53,0x50,0x21,0x00,0x00,0x1E,0x00,0x00,0x00,0x10,
-            0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0xFD,0x00,
-            0x30,0x92,0xB4,0xB4,0x22,0x01,0x0A,0x20,0x20,0x20,0x20,0x20,0x20,0x00,0x00,0x00,0xFC,0x00,0x4C,
-            0x45,0x4E,0x20,0x59,0x32,0x37,0x66,0x41,0x0A,0x20,0x20,0x20,0x00,0x11
-        },
-        {
-            { 3840, 2160,  60 },
-            { 1600,  900,  60 },
-            { 1024,  768,  60 },
-        },
-        0
-    }
     // Another EDID
     // https://github.com/roshkins/IddSampleDriver/blob/df7238c1f242e1093cdcab0ea749f34094570283/IddSampleDriver/Driver.cpp#L419
 };
@@ -97,7 +73,8 @@ static const struct IndirectSampleMonitor s_SampleMonitors[] =
 
 #pragma region helpers
 
-static inline void FillSignalInfo(DISPLAYCONFIG_VIDEO_SIGNAL_INFO& Mode, DWORD Width, DWORD Height, DWORD VSync, bool bMonitorMode)
+static inline void FillSignalInfo(DISPLAYCONFIG_VIDEO_SIGNAL_INFO& Mode, 
+    DWORD Width, DWORD Height, DWORD VSync, bool bMonitorMode)
 {
     Mode.totalSize.cx = Mode.activeSize.cx = Width;
     Mode.totalSize.cy = Mode.activeSize.cy = Height;
@@ -112,28 +89,24 @@ static inline void FillSignalInfo(DISPLAYCONFIG_VIDEO_SIGNAL_INFO& Mode, DWORD W
     Mode.hSyncFreq.Denominator = 1;
 
     Mode.scanLineOrdering = DISPLAYCONFIG_SCANLINE_ORDERING_PROGRESSIVE;
-
     Mode.pixelRate = ((UINT64) VSync) * ((UINT64) Width) * ((UINT64) Height);
 }
 
-static IDDCX_MONITOR_MODE CreateIddCxMonitorMode(DWORD Width, DWORD Height, DWORD VSync, IDDCX_MONITOR_MODE_ORIGIN Origin = IDDCX_MONITOR_MODE_ORIGIN_DRIVER)
+static IDDCX_MONITOR_MODE CreateIddCxMonitorMode(DWORD Width, DWORD Height, DWORD VSync, 
+    IDDCX_MONITOR_MODE_ORIGIN Origin = IDDCX_MONITOR_MODE_ORIGIN_DRIVER)
 {
     IDDCX_MONITOR_MODE Mode = {};
-
     Mode.Size = sizeof(Mode);
     Mode.Origin = Origin;
     FillSignalInfo(Mode.MonitorVideoSignalInfo, Width, Height, VSync, true);
-
     return Mode;
 }
 
 static IDDCX_TARGET_MODE CreateIddCxTargetMode(DWORD Width, DWORD Height, DWORD VSync)
 {
     IDDCX_TARGET_MODE Mode = {};
-
     Mode.Size = sizeof(Mode);
     FillSignalInfo(Mode.TargetVideoSignalInfo.targetVideoSignalInfo, Width, Height, VSync, false);
-
     return Mode;
 }
 
@@ -162,8 +135,7 @@ struct IndirectDeviceContextWrapper
 {
     IndirectDeviceContext* pContext;
 
-    void Cleanup()
-    {
+    void Cleanup() {
         delete pContext;
         pContext = nullptr;
     }
@@ -173,8 +145,7 @@ struct IndirectMonitorContextWrapper
 {
     IndirectMonitorContext* pContext;
 
-    void Cleanup()
-    {
+    void Cleanup() {
         delete pContext;
         pContext = nullptr;
     }
@@ -208,32 +179,22 @@ extern "C" NTSTATUS DriverEntry(
 
     WDF_OBJECT_ATTRIBUTES Attributes;
     WDF_OBJECT_ATTRIBUTES_INIT(&Attributes);
-
     WPP_INIT_TRACING(pDriverObject, pRegistryPath);
-
-    WDF_DRIVER_CONFIG_INIT(&Config,
-        IddRustDeskDeviceAdd
-    );
+    WDF_DRIVER_CONFIG_INIT(&Config, IddRustDeskDeviceAdd);
     Config.EvtDriverUnload = RustDeskIddDriverUnload;
 
     // The WdfDriverCreate method creates a framework driver object for the calling driver.
     Status = WdfDriverCreate(pDriverObject, pRegistryPath, &Attributes, &Config, WDF_NO_HANDLE);
-    if (!NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DRIVER,
+    if (!NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
             "%!FUNC! cannot create device %!STATUS!",
             Status);
         WPP_CLEANUP(WdfDriverWdmGetDriverObject(Driver));
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_INFORMATION,
-            TRACE_DRIVER,
+    } else {
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER,
             "%!FUNC! driver created with path %wZ",
             pRegistryPath);
     }
-
     return Status;
 }
 
@@ -281,10 +242,8 @@ NTSTATUS IddRustDeskDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT pDeviceInit)
     IddConfig.EvtIddCxMonitorUnassignSwapChain = IddRustDeskMonitorUnassignSwapChain;
 
     Status = IddCxDeviceInitConfig(pDeviceInit, &IddConfig);
-    if (!NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DRIVER,
+    if (!NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
             "%!FUNC! cannot init device config %!STATUS!",
             Status);
         return Status;
@@ -292,22 +251,18 @@ NTSTATUS IddRustDeskDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT pDeviceInit)
 
     WDF_OBJECT_ATTRIBUTES Attr;
     WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attr, IndirectDeviceContextWrapper);
-    Attr.EvtCleanupCallback = [](WDFOBJECT Object)
-    {
+    Attr.EvtCleanupCallback = [](WDFOBJECT Object) {
         // Automatically cleanup the context when the WDF object is about to be deleted
         auto* pContext = WdfObjectGet_IndirectDeviceContextWrapper(Object);
-        if (pContext)
-        {
+        if (pContext) {
             pContext->Cleanup();
         }
     };
 
     WDFDEVICE Device = nullptr;
     Status = WdfDeviceCreate(&pDeviceInit, &Attr, &Device);
-    if (!NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (!NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! cannot create device %!STATUS!",
             Status);
         return Status;
@@ -324,20 +279,16 @@ NTSTATUS IddRustDeskDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT pDeviceInit)
         NULL // No Reference String. If you provide one it will appended to the
     );   // symbolic link. Some drivers register multiple interfaces for the same device
          // and use the reference string to distinguish between them
-    if (!NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (!NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! WdfDeviceCreateDeviceInterface failed %!STATUS!",
             Status);
         return Status;
     }
 
     Status = IddCxDeviceInitialize(Device);
-    if (!NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (!NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! cannot initialize device %!STATUS!",
             Status);
         return Status;
@@ -346,7 +297,6 @@ NTSTATUS IddRustDeskDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT pDeviceInit)
     // Create a new device context object and attach it to the WDF device object
     auto* pContext = WdfObjectGet_IndirectDeviceContextWrapper(Device);
     pContext->pContext = new IndirectDeviceContext(Device);
-
     return Status;
 }
 
@@ -354,9 +304,7 @@ _Use_decl_annotations_
 NTSTATUS IddRustDeskDeviceD0Entry(WDFDEVICE Device, WDF_POWER_DEVICE_STATE PreviousState)
 {
     UNREFERENCED_PARAMETER(PreviousState);
-
     // This function is called by WDF to start the device in the fully-on power state.
-
     auto* pContext = WdfObjectGet_IndirectDeviceContextWrapper(Device);
     pContext->pContext->InitAdapter();
 
@@ -367,7 +315,6 @@ NTSTATUS IddRustDeskDeviceD0Entry(WDFDEVICE Device, WDF_POWER_DEVICE_STATE Previ
 
 Direct3DDevice::Direct3DDevice(LUID AdapterLuid) : AdapterLuid(AdapterLuid)
 {
-
 }
 
 Direct3DDevice::Direct3DDevice()
@@ -380,10 +327,8 @@ HRESULT Direct3DDevice::Init()
     // The DXGI factory could be cached, but if a new render adapter appears on the system, a new factory needs to be
     // created. If caching is desired, check DxgiFactory->IsCurrent() each time and recreate the factory if !IsCurrent.
     HRESULT hr = CreateDXGIFactory2(0, IID_PPV_ARGS(&DxgiFactory));
-    if (FAILED(hr))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DRIVER,
+    if (FAILED(hr)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
             "%!FUNC! cannot create dxgi factory2 %!HRESULT!",
             hr);
         return hr;
@@ -391,10 +336,8 @@ HRESULT Direct3DDevice::Init()
 
     // Find the specified render adapter
     hr = DxgiFactory->EnumAdapterByLuid(AdapterLuid, IID_PPV_ARGS(&Adapter));
-    if (FAILED(hr))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DRIVER,
+    if (FAILED(hr)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
             "%!FUNC! cannot enum adapter by luid %!HRESULT!",
             hr);
         return hr;
@@ -412,10 +355,8 @@ HRESULT Direct3DDevice::Init()
         &Device,
         nullptr,
         &DeviceContext);
-    if (FAILED(hr))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DRIVER,
+    if (FAILED(hr)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
             "%!FUNC! cannot create d3d11 device %!HRESULT!",
             hr);
 
@@ -445,8 +386,7 @@ SwapChainProcessor::~SwapChainProcessor()
     // Alert the swap-chain processing thread to terminate
     SetEvent(m_hTerminateEvent.Get());
 
-    if (m_hThread.Get())
-    {
+    if (m_hThread.Get()) {
         // Wait for the thread to terminate
         WaitForSingleObject(m_hThread.Get(), INFINITE);
     }
@@ -480,10 +420,8 @@ void SwapChainProcessor::RunCore()
     // Get the DXGI device interface
     ComPtr<IDXGIDevice> DxgiDevice;
     HRESULT hr = m_Device->Device.As(&DxgiDevice);
-    if (FAILED(hr))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DRIVER,
+    if (FAILED(hr)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
             "%!FUNC! cannot convert dxgi device %!HRESULT!",
             hr);
         return;
@@ -493,63 +431,45 @@ void SwapChainProcessor::RunCore()
     SetDevice.pDevice = DxgiDevice.Get();
 
     hr = IddCxSwapChainSetDevice(m_hSwapChain, &SetDevice);
-    if (FAILED(hr))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DRIVER,
+    if (FAILED(hr)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
             "%!FUNC! failed, swap chain set device %!HRESULT!",
             hr);
         return;
     }
-
+ 
     TraceEvents(TRACE_LEVEL_RESERVED7, TRACE_DRIVER, "%!FUNC! begin acquire and release buffers in a loop");
-
     // Acquire and release buffers in a loop
-    for (;;)
-    {
+    for (;;) {
         ComPtr<IDXGIResource> AcquiredBuffer;
-
         // Ask for the next buffer from the producer
         IDARG_OUT_RELEASEANDACQUIREBUFFER Buffer = {};
         hr = IddCxSwapChainReleaseAndAcquireBuffer(m_hSwapChain, &Buffer);
-
         // AcquireBuffer immediately returns STATUS_PENDING if no buffer is yet available
-        if (hr == E_PENDING)
-        {
+        if (hr == E_PENDING) {
             // We must wait for a new buffer
-            HANDLE WaitHandles [] =
-            {
+            HANDLE WaitHandles [] = {
                 m_hAvailableBufferEvent,
                 m_hTerminateEvent.Get()
             };
             DWORD WaitResult = WaitForMultipleObjects(ARRAYSIZE(WaitHandles), WaitHandles, FALSE, 16);
-            if (WaitResult == WAIT_OBJECT_0 || WaitResult == WAIT_TIMEOUT)
-            {
+            if (WaitResult == WAIT_OBJECT_0 || WaitResult == WAIT_TIMEOUT) {
                 // We have a new buffer, so try the AcquireBuffer again
                 continue;
-            }
-            else if (WaitResult == WAIT_OBJECT_0 + 1)
-            {
+            } else if (WaitResult == WAIT_OBJECT_0 + 1) {
                 // We need to terminate
-                TraceEvents(TRACE_LEVEL_RESERVED7,
-                    TRACE_DRIVER,
+                TraceEvents(TRACE_LEVEL_RESERVED7, TRACE_DRIVER,
                     "%!FUNC! Terminate");
                 break;
-            }
-            else
-            {
+            } else {
                 // The wait was cancelled or something unexpected happened
                 hr = HRESULT_FROM_WIN32(WaitResult);
-
-                TraceEvents(TRACE_LEVEL_RESERVED6,
-                    TRACE_DRIVER,
+                TraceEvents(TRACE_LEVEL_RESERVED6, TRACE_DRIVER,
                     "%!FUNC! The wait was cancelled or something unexpected happened %!HRESULT!",
                     hr);
                 break;
             }
-        }
-        else if (SUCCEEDED(hr))
-        {
+        } else if (SUCCEEDED(hr)) {
             // We have new frame to process, the surface has a reference on it that the driver has to release
             AcquiredBuffer.Attach(Buffer.MetaData.pSurface);
 
@@ -576,10 +496,8 @@ void SwapChainProcessor::RunCore()
             // Indicate to OS that we have finished inital processing of the frame, it is a hint that
             // OS could start preparing another frame
             hr = IddCxSwapChainFinishedProcessingFrame(m_hSwapChain);
-            if (FAILED(hr))
-            {
-                TraceEvents(TRACE_LEVEL_ERROR,
-                    TRACE_DRIVER,
+            if (FAILED(hr)) {
+                TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
                     "%!FUNC! cannot finish processing frame %!HRESULT!",
                     hr);
                 break;
@@ -591,12 +509,9 @@ void SwapChainProcessor::RunCore()
             // Drivers should report information about sub-frame timings, like encode time, send time, etc.
             // ==============================
             // IddCxSwapChainReportFrameStatistics(m_hSwapChain, ...);
-        }
-        else
-        {
+        } else {
             // The swap-chain was likely abandoned (e.g. DXGI_ERROR_ACCESS_LOST), so exit the processing loop
-            TraceEvents(TRACE_LEVEL_ERROR,
-                TRACE_DRIVER,
+            TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER,
                 "%!FUNC! The swap-chain was likely abandoned %!HRESULT!",
                 hr);
             break;
@@ -614,18 +529,15 @@ IndirectDeviceContext::IndirectDeviceContext(_In_ WDFDEVICE WdfDevice)
 {
     m_Adapter = {};
 
-    for (UINT i = 0; i < m_sMaxMonitorCount; i++)
-    {
+    for (UINT i = 0; i < m_sMaxMonitorCount; i++) {
         m_Monitors[i] = NULL;
     }
 }
 
 IndirectDeviceContext::~IndirectDeviceContext()
 {
-    for (UINT i = 0; i < m_sMaxMonitorCount; i++)
-    {
-        if (m_Monitors[i] != NULL)
-        {
+    for (UINT i = 0; i < m_sMaxMonitorCount; i++) {
+        if (m_Monitors[i] != NULL) {
             // TODO: Plug out monitor
             m_Monitors[i] = NULL;
         }
@@ -675,8 +587,7 @@ void IndirectDeviceContext::InitAdapter()
     IDARG_OUT_ADAPTER_INIT AdapterInitOut;
     NTSTATUS Status = IddCxAdapterInitAsync(&AdapterInit, &AdapterInitOut);
 
-    if (NT_SUCCESS(Status))
-    {
+    if (NT_SUCCESS(Status)) {
         // Store a reference to the WDF adapter handle
         m_Adapter = AdapterInitOut.AdapterObject;
 
@@ -684,14 +595,10 @@ void IndirectDeviceContext::InitAdapter()
         auto* pContext = WdfObjectGet_IndirectDeviceContextWrapper(AdapterInitOut.AdapterObject);
         pContext->pContext = this;
 
-        TraceEvents(TRACE_LEVEL_INFORMATION,
-            TRACE_DEVICE,
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
             "%!FUNC! init adapter done");
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    } else {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! cannot init adapter %!STATUS!",
             Status);
     }
@@ -702,7 +609,8 @@ void IndirectDeviceContext::FinishInit(UINT ConnectorIndex)
     WDF_OBJECT_ATTRIBUTES Attr;
     WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attr, IndirectMonitorContextWrapper);
 
-    // In the sample driver, we report a monitor right away but a real driver would do this when a monitor connection event occurs
+    // In the sample driver, we report a monitor right away 
+    //  but a real driver would do this when a monitor connection event occurs
     IDDCX_MONITOR_INFO MonitorInfo = {};
     MonitorInfo.Size = sizeof(MonitorInfo);
     MonitorInfo.MonitorType = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_HDMI;
@@ -710,13 +618,10 @@ void IndirectDeviceContext::FinishInit(UINT ConnectorIndex)
 
     MonitorInfo.MonitorDescription.Size = sizeof(MonitorInfo.MonitorDescription);
     MonitorInfo.MonitorDescription.Type = IDDCX_MONITOR_DESCRIPTION_TYPE_EDID;
-    if (ConnectorIndex >= m_sMaxMonitorCount)
-    {
+    if (ConnectorIndex >= m_sMaxMonitorCount) {
         MonitorInfo.MonitorDescription.DataSize = 0;
         MonitorInfo.MonitorDescription.pData = nullptr;
-    }
-    else
-    {
+    } else {
         MonitorInfo.MonitorDescription.DataSize = IndirectSampleMonitor::szEdidBlock;
         MonitorInfo.MonitorDescription.pData = const_cast<BYTE*>(s_SampleMonitors[0].pEdidBlock);
     }
@@ -739,10 +644,8 @@ void IndirectDeviceContext::FinishInit(UINT ConnectorIndex)
     // Create a monitor object with the specified monitor descriptor
     IDARG_OUT_MONITORCREATE MonitorCreateOut;
     NTSTATUS Status = IddCxMonitorCreate(m_Adapter, &MonitorCreate, &MonitorCreateOut);
-    if (NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_INFORMATION,
-            TRACE_DEVICE,
+    if (NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
             "%!FUNC! create monitor done");
 
         // Create a new monitor context object and attach it to the Idd monitor object
@@ -752,24 +655,16 @@ void IndirectDeviceContext::FinishInit(UINT ConnectorIndex)
         // Tell the OS that the monitor has been plugged in
         IDARG_OUT_MONITORARRIVAL ArrivalOut;
         Status = IddCxMonitorArrival(MonitorCreateOut.MonitorObject, &ArrivalOut);
-        if (NT_SUCCESS(Status))
-        {
-            TraceEvents(TRACE_LEVEL_INFORMATION,
-                TRACE_DEVICE,
+        if (NT_SUCCESS(Status)) {
+            TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
                 "%!FUNC! tell the OS that the monitor has been plugged in done");
-        }
-        else
-        {
-            TraceEvents(TRACE_LEVEL_ERROR,
-                TRACE_DEVICE,
+        } else {
+            TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
                 "%!FUNC! cannot tell the OS that the monitor has been plugged in %!STATUS!",
                 Status);
         }
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    } else {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! cannot create monitor %!STATUS!",
             Status);
     }
@@ -777,10 +672,8 @@ void IndirectDeviceContext::FinishInit(UINT ConnectorIndex)
 
 NTSTATUS IndirectDeviceContext::CheckIndex(UINT index)
 {
-    if (index >= m_sMaxMonitorCount)
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (index >= m_sMaxMonitorCount) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! monitor index %u out of range %u", index, m_sMaxMonitorCount);
         return STATUS_ERROR_INDEX_OOR;
     }
@@ -797,23 +690,18 @@ NTSTATUS IndirectDeviceContext::PlugInMonitor(PCtlPlugIn Param)
 
     EARLY_RETURN_NTSTATUS(CheckIndex(ConnectorIndex));
 
-    TraceEvents(TRACE_LEVEL_INFORMATION,
-        TRACE_DEVICE,
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
         "%!FUNC! begin monitor %u",
         ConnectorIndex);
 
-    if (!NT_SUCCESS(m_AdapterInitStatus))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (!NT_SUCCESS(m_AdapterInitStatus)) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! adapter init failed %!STATUS!", m_AdapterInitStatus);
         return m_AdapterInitStatus;
     }
 
-    if (m_Monitors[ConnectorIndex] != NULL)
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (m_Monitors[ConnectorIndex] != NULL) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! monitor of index %u already exists", ConnectorIndex);
         return STATUS_ERROR_MONITOR_EXISTS;
     }
@@ -821,7 +709,8 @@ NTSTATUS IndirectDeviceContext::PlugInMonitor(PCtlPlugIn Param)
     WDF_OBJECT_ATTRIBUTES Attr;
     WDF_OBJECT_ATTRIBUTES_INIT_CONTEXT_TYPE(&Attr, IndirectMonitorContextWrapper);
 
-    // In the sample driver, we report a monitor right away but a real driver would do this when a monitor connection event occurs
+    // In the sample driver, we report a monitor right away 
+    //  but a real driver would do this when a monitor connection event occurs
     IDDCX_MONITOR_INFO MonitorInfo = {};
     MonitorInfo.Size = sizeof(MonitorInfo);
     MonitorInfo.MonitorType = DISPLAYCONFIG_OUTPUT_TECHNOLOGY_HDMI;
@@ -833,9 +722,7 @@ NTSTATUS IndirectDeviceContext::PlugInMonitor(PCtlPlugIn Param)
     {
         MonitorInfo.MonitorDescription.DataSize = 0;
         MonitorInfo.MonitorDescription.pData = nullptr;
-    }
-    else
-    {
+    } else {
         MonitorInfo.MonitorDescription.DataSize = IndirectSampleMonitor::szEdidBlock;
         MonitorInfo.MonitorDescription.pData = const_cast<BYTE*>(s_SampleMonitors[MonitorEDID].pEdidBlock);
     }
@@ -849,19 +736,15 @@ NTSTATUS IndirectDeviceContext::PlugInMonitor(PCtlPlugIn Param)
     // Create a monitor object with the specified monitor descriptor
     IDARG_OUT_MONITORCREATE MonitorCreateOut;
     NTSTATUS Status = IddCxMonitorCreate(m_Adapter, &MonitorCreate, &MonitorCreateOut);
-    if (NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_INFORMATION,
-            TRACE_DEVICE,
+    if (NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
             "%!FUNC! create monitor done");
 
         // Tell the OS that the monitor has been plugged in
         IDARG_OUT_MONITORARRIVAL ArrivalOut;
         Status = IddCxMonitorArrival(MonitorCreateOut.MonitorObject, &ArrivalOut);
-        if (NT_SUCCESS(Status))
-        {
-            TraceEvents(TRACE_LEVEL_INFORMATION,
-                TRACE_DEVICE,
+        if (NT_SUCCESS(Status)) {
+            TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
                 "%!FUNC! monitor %u done",
                 ConnectorIndex);
 
@@ -869,20 +752,14 @@ NTSTATUS IndirectDeviceContext::PlugInMonitor(PCtlPlugIn Param)
             auto* pMonitorContextWrapper = WdfObjectGet_IndirectMonitorContextWrapper(MonitorCreateOut.MonitorObject);
             pMonitorContextWrapper->pContext = new IndirectMonitorContext(MonitorCreateOut.MonitorObject);
             m_Monitors[ConnectorIndex] = MonitorCreateOut.MonitorObject;
-        }
-        else
-        {
-            TraceEvents(TRACE_LEVEL_ERROR,
-                TRACE_DEVICE,
+        } else {
+            TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
                 "%!FUNC! cannot tell the OS that the monitor has been plugged in %!STATUS!",
                 Status);
             (VOID)IddCxMonitorDeparture(MonitorCreateOut.MonitorObject);
         }
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    } else {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! cannot create monitor %!STATUS!",
             Status);
     }
@@ -892,39 +769,27 @@ NTSTATUS IndirectDeviceContext::PlugInMonitor(PCtlPlugIn Param)
 NTSTATUS IndirectDeviceContext::PlugOutMonitor(PCtlPlugOut Param)
 {
     UINT ConnectorIndex = Param->ConnectorIndex;
-
     EARLY_RETURN_NTSTATUS(CheckIndex(ConnectorIndex));
-
-    TraceEvents(TRACE_LEVEL_INFORMATION,
-        TRACE_DEVICE,
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
         "%!FUNC! begin monitor %u",
         ConnectorIndex);
 
-    if (ConnectorIndex >= m_sMaxMonitorCount)
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (ConnectorIndex >= m_sMaxMonitorCount) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! monitor index %u out of range %u", ConnectorIndex, m_sMaxMonitorCount);
         return STATUS_ERROR_INDEX_OOR;
     }
-
-    if (m_Monitors[ConnectorIndex] == NULL)
-    {
+    if (m_Monitors[ConnectorIndex] == NULL) {
         return STATUS_ERROR_MONITOR_NOT_EXISTS;
     }
     NTSTATUS Status = IddCxMonitorDeparture(m_Monitors[ConnectorIndex]);
-    if (NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_INFORMATION,
-            TRACE_DEVICE,
+    if (NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
             "%!FUNC! monitor %u done",
             ConnectorIndex);
         m_Monitors[ConnectorIndex] = NULL;
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    } else {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! failed monitor %u %!STATUS!",
             ConnectorIndex,
             Status);
@@ -940,63 +805,51 @@ NTSTATUS IndirectDeviceContext::UpdateMonitorModes(PCtlMonitorModes Param)
 
     EARLY_RETURN_NTSTATUS(CheckIndex(ConnectorIndex));
 
-    TraceEvents(TRACE_LEVEL_INFORMATION,
-        TRACE_DEVICE,
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
         "%!FUNC! begin update monitor mode %u",
         ConnectorIndex);
 
-    if (ConnectorIndex >= m_sMaxMonitorCount)
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (ConnectorIndex >= m_sMaxMonitorCount) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! monitor index %u out of range %u", ConnectorIndex, m_sMaxMonitorCount);
         return STATUS_ERROR_INDEX_OOR;
     }
 
-    if (m_Monitors[ConnectorIndex] == NULL)
-    {
+    if (m_Monitors[ConnectorIndex] == NULL) {
         return STATUS_ERROR_MONITOR_NOT_EXISTS;
     }
 
-    if (ModeCount == 0)
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (ModeCount == 0) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! monitor %u ModeCount is 0",
             ConnectorIndex);
         return STATUS_ERROR_MONITOR_INVALID_PARAM;
     }
 
     IDDCX_TARGET_MODE* PTargetMode = (IDDCX_TARGET_MODE*)malloc(sizeof(IDDCX_TARGET_MODE) * ModeCount);
-    if (PTargetMode == NULL)
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (PTargetMode == NULL) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! monitor %u alloc failed",
             ConnectorIndex);
         return STATUS_ERROR_MONITOR_OOM;
     }
-    for (UINT i = 0; i < ModeCount; ++i)
-    {
-        PTargetMode[i] = CreateIddCxTargetMode(
-            Param->Modes[i].Width,
-            Param->Modes[i].Height,
-            Param->Modes[i].Sync);
+    DWORD width = 3840, height = 2160;
+    for (UINT i = 0; i < ModeCount; ++i) {
+        width = Param->Modes[i].Width <= 3840 ? Param->Modes[i].Width : 3840;
+        height = Param->Modes[i].Height <= 2160 ? Param->Modes[i].Height : 2160;
+        PTargetMode[i] = CreateIddCxTargetMode(width, height, Param->Modes[i].Sync);
     }
     IDARG_IN_UPDATEMODES UpdateModes{ IDDCX_UPDATE_REASON_OTHER, ModeCount, PTargetMode };
     NTSTATUS Status = IddCxMonitorUpdateModes(m_Monitors[ConnectorIndex], &UpdateModes);
     free(PTargetMode);
-    if (NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_INFORMATION,
-            TRACE_DEVICE,
+    if (NT_SUCCESS(Status)) {
+        s_SampleDefaultModes[0].Width = width;
+        s_SampleDefaultModes[0].Height = height;
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
             "%!FUNC! monitor %u done",
             ConnectorIndex);
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    } else {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! monitor %u %!STATUS!",
             ConnectorIndex,
             Status);
@@ -1019,22 +872,15 @@ void IndirectMonitorContext::AssignSwapChain(IDDCX_SWAPCHAIN SwapChain, LUID Ren
     m_ProcessingThread.reset();
 
     auto Device = make_shared<Direct3DDevice>(RenderAdapter);
-    if (FAILED(Device->Init()))
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    if (FAILED(Device->Init())) {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! cannot init Direct3DDevice");
-
         // It's important to delete the swap-chain if D3D initialization fails, so that the OS knows to generate a new
         // swap-chain and try again.
         WdfObjectDelete(SwapChain);
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_RESERVED7,
-            TRACE_DEVICE,
+    } else {
+        TraceEvents(TRACE_LEVEL_RESERVED7, TRACE_DEVICE,
             "%!FUNC! Init Direct3DDevice done");
-
         // Create a new swap-chain processing thread
         m_ProcessingThread.reset(new SwapChainProcessor(SwapChain, Device, NewFrameEvent));
     }
@@ -1052,13 +898,12 @@ void IndirectMonitorContext::UnassignSwapChain()
 
 _Use_decl_annotations_
 VOID
-IddRustDeskIoDeviceControl(WDFDEVICE Device, WDFREQUEST Request, size_t OutputBufferLength, size_t InputBufferLength, ULONG IoControlCode)
+IddRustDeskIoDeviceControl(WDFDEVICE Device, WDFREQUEST Request, 
+    size_t OutputBufferLength, size_t InputBufferLength, ULONG IoControlCode)
 {
-    TraceEvents(TRACE_LEVEL_INFORMATION,
-        TRACE_DEVICE,
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
         "%!FUNC! receive io control code %ul, in buf len %u\n",
-        IoControlCode,
-        (unsigned)InputBufferLength);
+        IoControlCode, (unsigned)InputBufferLength);
 
     UNREFERENCED_PARAMETER(Request);
     UNREFERENCED_PARAMETER(OutputBufferLength);
@@ -1070,14 +915,12 @@ IddRustDeskIoDeviceControl(WDFDEVICE Device, WDFREQUEST Request, size_t OutputBu
     size_t BufSize;
     auto* pContext = WdfObjectGet_IndirectDeviceContextWrapper(Device);
 
-    switch (IoControlCode)
-    {
+    switch (IoControlCode) {
     case IOCTL_CHANGER_IDD_PLUG_IN:
         PCtlPlugIn pCtlPlugIn;
         Status = WdfRequestRetrieveInputBuffer(Request, sizeof(CtlPlugIn), &Buffer, &BufSize);
         if (!NT_SUCCESS(Status)) {
-            TraceEvents(TRACE_LEVEL_ERROR,
-                TRACE_DEVICE,
+            TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
                 "%!FUNC! cannot retrieve input buffer %!STATUS!",
                 Status);
             break;
@@ -1088,10 +931,8 @@ IddRustDeskIoDeviceControl(WDFDEVICE Device, WDFREQUEST Request, size_t OutputBu
     case IOCTL_CHANGER_IDD_PLUG_OUT:
         PCtlPlugOut pCtlPlugOut;
         Status = WdfRequestRetrieveInputBuffer(Request, InputBufferLength, &Buffer, &BufSize);
-        if (!NT_SUCCESS(Status))
-        {
-            TraceEvents(TRACE_LEVEL_ERROR,
-                TRACE_DEVICE,
+        if (!NT_SUCCESS(Status)) {
+            TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
                 "%!FUNC! cannot retrieve input buffer %!STATUS!",
                 Status);
             break;
@@ -1102,10 +943,8 @@ IddRustDeskIoDeviceControl(WDFDEVICE Device, WDFREQUEST Request, size_t OutputBu
     case IOCTL_CHANGER_IDD_UPDATE_MONITOR_MODE:
         PCtlMonitorModes pMonitorModes;
         Status = WdfRequestRetrieveInputBuffer(Request, InputBufferLength, &Buffer, &BufSize);
-        if (!NT_SUCCESS(Status))
-        {
-            TraceEvents(TRACE_LEVEL_ERROR,
-                TRACE_DEVICE,
+        if (!NT_SUCCESS(Status)) {
+            TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
                 "%!FUNC! cannot retrieve input buffer %!STATUS!",
                 Status);
             break;
@@ -1114,16 +953,14 @@ IddRustDeskIoDeviceControl(WDFDEVICE Device, WDFREQUEST Request, size_t OutputBu
         Status = pContext->pContext->UpdateMonitorModes(pMonitorModes);
         break;
     default:
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! unknown io ctrl code %ud",
             IoControlCode);
         Status = STATUS_NOT_IMPLEMENTED;
         break;
     }
 
-    TraceEvents(TRACE_LEVEL_INFORMATION,
-        TRACE_DEVICE,
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
         "%!FUNC! io control code %ul, %!STATUS!\n",
         IoControlCode, Status);
 
@@ -1135,27 +972,15 @@ _Use_decl_annotations_
 NTSTATUS IddRustDeskAdapterInitFinished(IDDCX_ADAPTER AdapterObject, const IDARG_IN_ADAPTER_INIT_FINISHED* pInArgs)
 {
     TraceEvents(TRACE_LEVEL_VERBOSE, TRACE_DEVICE, "%!FUNC! called");
-
     // This is called when the OS has finished setting up the adapter for use by the IddCx driver. It's now possible
     // to report attached monitors.
-
     auto* pDeviceContextWrapper = WdfObjectGet_IndirectDeviceContextWrapper(AdapterObject);
     auto Status = pInArgs->AdapterInitStatus;
-    if (NT_SUCCESS(Status))
-    {
-        TraceEvents(TRACE_LEVEL_INFORMATION,
-            TRACE_DEVICE,
+    if (NT_SUCCESS(Status)) {
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
             "%!FUNC! adapter init finished success");
-
-        //for (DWORD i = 0; i < IDD_SAMPLE_MONITOR_COUNT; i++)
-        //{
-        //    pDeviceContextWrapper->pContext->FinishInit(i);
-        //}
-    }
-    else
-    {
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+    } else {
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! adapter init finished failed %!STATUS!",
             Status);
     }
@@ -1168,55 +993,44 @@ _Use_decl_annotations_
 NTSTATUS IddRustDeskAdapterCommitModes(IDDCX_ADAPTER AdapterObject, const IDARG_IN_COMMITMODES* pInArgs)
 {
     TraceEvents(TRACE_LEVEL_VERBOSE, TRACE_DEVICE, "%!FUNC! called");
-
     UNREFERENCED_PARAMETER(AdapterObject);
     UNREFERENCED_PARAMETER(pInArgs);
 
     // For the sample, do nothing when modes are picked - the swap-chain is taken care of by IddCx
-
     // ==============================
     // TODO: In a real driver, this function would be used to reconfigure the device to commit the new modes. Loop
     // through pInArgs->pPaths and look for IDDCX_PATH_FLAGS_ACTIVE. Any path not active is inactive (e.g. the monitor
     // should be turned off).
     // ==============================
-
     return STATUS_SUCCESS;
 }
 
 _Use_decl_annotations_
-NTSTATUS IddRustDeskParseMonitorDescription(const IDARG_IN_PARSEMONITORDESCRIPTION* pInArgs, IDARG_OUT_PARSEMONITORDESCRIPTION* pOutArgs)
+NTSTATUS IddRustDeskParseMonitorDescription(const IDARG_IN_PARSEMONITORDESCRIPTION* pInArgs, 
+    IDARG_OUT_PARSEMONITORDESCRIPTION* pOutArgs)
 {
     TraceEvents(TRACE_LEVEL_VERBOSE, TRACE_DEVICE, "%!FUNC! called");
-
     // ==============================
     // TODO: In a real driver, this function would be called to generate monitor modes for an EDID by parsing it. In
     // this sample driver, we hard-code the EDID, so this function can generate known modes.
     // ==============================
-
     pOutArgs->MonitorModeBufferOutputCount = IndirectSampleMonitor::szModeList;
-
-    if (pInArgs->MonitorModeBufferInputCount < IndirectSampleMonitor::szModeList)
-    {
+    if (pInArgs->MonitorModeBufferInputCount < IndirectSampleMonitor::szModeList) {
         // Return success if there was no buffer, since the caller was only asking for a count of modes
         return (pInArgs->MonitorModeBufferInputCount > 0) ? STATUS_BUFFER_TOO_SMALL : STATUS_SUCCESS;
-    }
-    else
-    {
+    } else {
         // In the sample driver, we have reported some static information about connected monitors
         // Check which of the reported monitors this call is for by comparing it to the pointer of
         // our known EDID blocks.
-
         if (pInArgs->MonitorDescription.DataSize != IndirectSampleMonitor::szEdidBlock)
             return STATUS_INVALID_PARAMETER;
 
         DWORD SampleMonitorIdx = 0;
-        for(; SampleMonitorIdx < ARRAYSIZE(s_SampleMonitors); SampleMonitorIdx++)
-        {
-            if (memcmp(pInArgs->MonitorDescription.pData, s_SampleMonitors[SampleMonitorIdx].pEdidBlock, IndirectSampleMonitor::szEdidBlock) == 0)
-            {
+        for(; SampleMonitorIdx < ARRAYSIZE(s_SampleMonitors); SampleMonitorIdx++) {
+            if (memcmp(pInArgs->MonitorDescription.pData, s_SampleMonitors[SampleMonitorIdx].pEdidBlock, 
+                IndirectSampleMonitor::szEdidBlock) == 0) {
                 // Copy the known modes to the output buffer
-                for (DWORD ModeIndex = 0; ModeIndex < IndirectSampleMonitor::szModeList; ModeIndex++)
-                {
+                for (DWORD ModeIndex = 0; ModeIndex < IndirectSampleMonitor::szModeList; ModeIndex++) {
                     pInArgs->pMonitorModes[ModeIndex] = CreateIddCxMonitorMode(
                         s_SampleMonitors[SampleMonitorIdx].pModeList[ModeIndex].Width,
                         s_SampleMonitors[SampleMonitorIdx].pModeList[ModeIndex].Height,
@@ -1224,16 +1038,13 @@ NTSTATUS IddRustDeskParseMonitorDescription(const IDARG_IN_PARSEMONITORDESCRIPTI
                         IDDCX_MONITOR_MODE_ORIGIN_MONITORDESCRIPTOR
                     );
                 }
-
                 // Set the preferred mode as represented in the EDID
                 pOutArgs->PreferredMonitorModeIdx = s_SampleMonitors[SampleMonitorIdx].ulPreferredModeIdx;
-        
                 return STATUS_SUCCESS;
             }
         }
 
-        TraceEvents(TRACE_LEVEL_ERROR,
-            TRACE_DEVICE,
+        TraceEvents(TRACE_LEVEL_ERROR, TRACE_DEVICE,
             "%!FUNC! invalid parameter");
         // This EDID block does not belong to the monitors we reported earlier
         return STATUS_INVALID_PARAMETER;
@@ -1241,27 +1052,21 @@ NTSTATUS IddRustDeskParseMonitorDescription(const IDARG_IN_PARSEMONITORDESCRIPTI
 }
 
 _Use_decl_annotations_
-NTSTATUS IddRustDeskMonitorGetDefaultModes(IDDCX_MONITOR MonitorObject, const IDARG_IN_GETDEFAULTDESCRIPTIONMODES* pInArgs, IDARG_OUT_GETDEFAULTDESCRIPTIONMODES* pOutArgs)
+NTSTATUS IddRustDeskMonitorGetDefaultModes(IDDCX_MONITOR MonitorObject, 
+    const IDARG_IN_GETDEFAULTDESCRIPTIONMODES* pInArgs, IDARG_OUT_GETDEFAULTDESCRIPTIONMODES* pOutArgs)
 {
     TraceEvents(TRACE_LEVEL_VERBOSE, TRACE_DEVICE, "%!FUNC! called");
-
     UNREFERENCED_PARAMETER(MonitorObject);
-
     // ==============================
     // TODO: In a real driver, this function would be called to generate monitor modes for a monitor with no EDID.
     // Drivers should report modes that are guaranteed to be supported by the transport protocol and by nearly all
     // monitors (such 640x480, 800x600, or 1024x768). If the driver has access to monitor modes from a descriptor other
     // than an EDID, those modes would also be reported here.
     // ==============================
-
-    if (pInArgs->DefaultMonitorModeBufferInputCount == 0)
-    {
+    if (pInArgs->DefaultMonitorModeBufferInputCount == 0) {
         pOutArgs->DefaultMonitorModeBufferOutputCount = ARRAYSIZE(s_SampleDefaultModes); 
-    }
-    else
-    {
-        for (DWORD ModeIndex = 0; ModeIndex < ARRAYSIZE(s_SampleDefaultModes); ModeIndex++)
-        {
+    } else {
+        for (DWORD ModeIndex = 0; ModeIndex < ARRAYSIZE(s_SampleDefaultModes); ModeIndex++) {
             pInArgs->pDefaultMonitorModes[ModeIndex] = CreateIddCxMonitorMode(
                 s_SampleDefaultModes[ModeIndex].Width,
                 s_SampleDefaultModes[ModeIndex].Height,
@@ -1269,47 +1074,29 @@ NTSTATUS IddRustDeskMonitorGetDefaultModes(IDDCX_MONITOR MonitorObject, const ID
                 IDDCX_MONITOR_MODE_ORIGIN_DRIVER
             );
         }
-
         pOutArgs->DefaultMonitorModeBufferOutputCount = ARRAYSIZE(s_SampleDefaultModes); 
         pOutArgs->PreferredMonitorModeIdx = 0;
     }
-
     return STATUS_SUCCESS;
 }
 
 // more query modes
 // https://github.com/roshkins/IddSampleDriver/blob/df7238c1f242e1093cdcab0ea749f34094570283/IddSampleDriver/Driver.cpp#L699
 _Use_decl_annotations_
-NTSTATUS IddRustDeskMonitorQueryModes(IDDCX_MONITOR MonitorObject, const IDARG_IN_QUERYTARGETMODES* pInArgs, IDARG_OUT_QUERYTARGETMODES* pOutArgs)
+NTSTATUS IddRustDeskMonitorQueryModes(IDDCX_MONITOR MonitorObject, 
+    const IDARG_IN_QUERYTARGETMODES* pInArgs, IDARG_OUT_QUERYTARGETMODES* pOutArgs)
 {
     TraceEvents(TRACE_LEVEL_VERBOSE, TRACE_DEVICE, "%!FUNC! called");
-
     UNREFERENCED_PARAMETER(MonitorObject);
-
     vector<IDDCX_TARGET_MODE> TargetModes;
-
     // Create a set of modes supported for frame processing and scan-out. These are typically not based on the
     // monitor's descriptor and instead are based on the static processing capability of the device. The OS will
     // report the available set of modes for a given output as the intersection of monitor modes with target modes.
-
     TargetModes.push_back(CreateIddCxTargetMode(3840, 2160, 60));
-    TargetModes.push_back(CreateIddCxTargetMode(2560, 1440, 144));
-    TargetModes.push_back(CreateIddCxTargetMode(2560, 1440, 90));
-    TargetModes.push_back(CreateIddCxTargetMode(2560, 1440, 60));
-    TargetModes.push_back(CreateIddCxTargetMode(1920, 1080, 144));
-    TargetModes.push_back(CreateIddCxTargetMode(1920, 1080, 90));
-    TargetModes.push_back(CreateIddCxTargetMode(1920, 1080, 60));
-    TargetModes.push_back(CreateIddCxTargetMode(1600,  900, 60));
-    TargetModes.push_back(CreateIddCxTargetMode(1024,  768, 75));
-    TargetModes.push_back(CreateIddCxTargetMode(1024,  768, 60));
-
     pOutArgs->TargetModeBufferOutputCount = (UINT) TargetModes.size();
-
-    if (pInArgs->TargetModeBufferInputCount >= TargetModes.size())
-    {
+    if (pInArgs->TargetModeBufferInputCount >= TargetModes.size()) {
         copy(TargetModes.begin(), TargetModes.end(), pInArgs->pTargetModes);
     }
-
     return STATUS_SUCCESS;
 }
 
@@ -1317,9 +1104,9 @@ _Use_decl_annotations_
 NTSTATUS IddRustDeskMonitorAssignSwapChain(IDDCX_MONITOR MonitorObject, const IDARG_IN_SETSWAPCHAIN* pInArgs)
 {
     TraceEvents(TRACE_LEVEL_RESERVED7, TRACE_DEVICE, "%!FUNC! called");
-
     auto* pMonitorContextWrapper = WdfObjectGet_IndirectMonitorContextWrapper(MonitorObject);
-    pMonitorContextWrapper->pContext->AssignSwapChain(pInArgs->hSwapChain, pInArgs->RenderAdapterLuid, pInArgs->hNextSurfaceAvailable);
+    pMonitorContextWrapper->pContext->AssignSwapChain(pInArgs->hSwapChain, 
+        pInArgs->RenderAdapterLuid, pInArgs->hNextSurfaceAvailable);
     return STATUS_SUCCESS;
 }
 
@@ -1327,7 +1114,6 @@ _Use_decl_annotations_
 NTSTATUS IddRustDeskMonitorUnassignSwapChain(IDDCX_MONITOR MonitorObject)
 {
     TraceEvents(TRACE_LEVEL_VERBOSE, TRACE_DEVICE, "%!FUNC! called");
-
     auto* pMonitorContextWrapper = WdfObjectGet_IndirectMonitorContextWrapper(MonitorObject);
     pMonitorContextWrapper->pContext->UnassignSwapChain();
     return STATUS_SUCCESS;

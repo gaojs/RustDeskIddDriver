@@ -101,8 +101,8 @@ int __cdecl main(int argc, char* argv[])
                 printf(GetLastMsg());
             } else {
                 printf("Plug in monitor done\n");
-                MonitorMode modes[2] = { { 1920, 1080,  60 }, { 1024,  768,  60 }, };
-                if (!MonitorModesUpdate(index, sizeof(modes)/sizeof(modes[0]), modes)) {
+                MonitorMode mode = { 1920, 1080,  60 };
+                if (!MonitorModesUpdate(mode)) {
                     printf(GetLastMsg());
                 }
                 index += 1;
@@ -123,16 +123,15 @@ int __cdecl main(int argc, char* argv[])
             }
             break;
         case 's': { // switch
-            static BOOL smallFlag = FALSE;
             printf("Change resolution, current index %u\n", index - 1);
-            MonitorMode modesLarge[] = { { 1024,  768,  60 }, };
-            MonitorMode modesSmall[] = { { 800, 600, 30 },  };
-            MonitorMode *modes = modesLarge;
-            smallFlag = !smallFlag; // switch
-            if (smallFlag) {
-                modes = modesSmall;
-            }
-            if (!MonitorModesUpdate(index - 1, 1, modes)) {
+            MonitorMode mode = {800, 600, 30};
+            printf("width:");
+            int n = scanf_s("%ld", &mode.width);
+            printf("height:");
+            int n2 = scanf_s("%ld", &mode.height);
+            printf("sync:");
+            int n3 = scanf_s("%ld", &mode.sync);
+            if (!MonitorModesUpdate(mode)) {
                 printf(GetLastMsg());
             } else {
                 printf("Change resolution done\n");            

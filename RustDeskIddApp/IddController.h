@@ -110,8 +110,6 @@ typedef struct _MonitorMode {
 /**
  * @brief Update monitor mode.
  *
- * @param index       [in] Monitor index, should be 0, 1, 2.
- * @param modeCount   [in] Monitor mode count.
  * @param MonitorMode [in] Monitor mode data.
  *
  * @return TRUE/FALSE. If FALSE returned, error message can be retrieved by GetLastMsg()
@@ -119,7 +117,7 @@ typedef struct _MonitorMode {
  * @see GetLastMsg#GetLastMsg
  *
  */
-BOOL MonitorModesUpdate(UINT index, UINT modeCount, PMonitorMode modes);
+BOOL MonitorModesUpdate(MonitorMode mode);
 
 /**
  * @brief Get last error message.

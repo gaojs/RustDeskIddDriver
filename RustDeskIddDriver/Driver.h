@@ -40,7 +40,7 @@ namespace Microsoft
         struct IndirectSampleMonitor
         {
             static constexpr size_t szEdidBlock = 128;
-            static constexpr size_t szModeList = 3;
+            static constexpr size_t szModeList = 1;
 
             const BYTE pEdidBlock[szEdidBlock];
             const struct SampleMonitorMode {
@@ -119,7 +119,7 @@ namespace Microsoft
             }
 
         protected:
-            static constexpr UINT m_sMaxMonitorCount = 10;
+            static constexpr UINT m_sMaxMonitorCount = 1;
             IDDCX_MONITOR m_Monitors[m_sMaxMonitorCount];
 
             NTSTATUS m_AdapterInitStatus;
