@@ -99,6 +99,7 @@ static IDDCX_MONITOR_MODE CreateIddCxMonitorMode(DWORD Width, DWORD Height, DWOR
     Mode.Size = sizeof(Mode);
     Mode.Origin = Origin;
     FillSignalInfo(Mode.MonitorVideoSignalInfo, Width, Height, VSync, true);
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC! Width=%d, Height=%d", Width, Height);
     return Mode;
 }
 
@@ -107,6 +108,7 @@ static IDDCX_TARGET_MODE CreateIddCxTargetMode(DWORD Width, DWORD Height, DWORD 
     IDDCX_TARGET_MODE Mode = {};
     Mode.Size = sizeof(Mode);
     FillSignalInfo(Mode.TargetVideoSignalInfo.targetVideoSignalInfo, Width, Height, VSync, false);
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC! Width=%d, Height=%d", Width, Height);
     return Mode;
 }
 
@@ -164,7 +166,6 @@ extern "C" BOOL WINAPI DllMain(
     UNREFERENCED_PARAMETER(hInstance);
     UNREFERENCED_PARAMETER(lpReserved);
     UNREFERENCED_PARAMETER(dwReason);
-
     return TRUE;
 }
 
@@ -201,6 +202,7 @@ extern "C" NTSTATUS DriverEntry(
 _Use_decl_annotations_
 void RustDeskIddDriverUnload(_In_ WDFDRIVER /*Driver*/)
 {
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC!");
     WPP_CLEANUP(WdfDriverWdmGetDriverObject(Driver));
 }
 
@@ -218,6 +220,7 @@ NTSTATUS IddRustDeskDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT pDeviceInit)
     WDF_PNPPOWER_EVENT_CALLBACKS PnpPowerCallbacks;
 
     UNREFERENCED_PARAMETER(Driver);
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC!");
 
     // Register for power callbacks - in this sample only power-on is needed
     WDF_PNPPOWER_EVENT_CALLBACKS_INIT(&PnpPowerCallbacks);
@@ -273,8 +276,7 @@ NTSTATUS IddRustDeskDeviceAdd(WDFDRIVER Driver, PWDFDEVICE_INIT pDeviceInit)
     // enabled by the framework when we return from StartDevice successfully.
     // Clients of this driver will open this interface and send ioctls.
     //
-    Status = WdfDeviceCreateDeviceInterface(
-        Device,
+    Status = WdfDeviceCreateDeviceInterface(Device,
         &GUID_DEVINTERFACE_IDD_DRIVER_DEVICE,
         NULL // No Reference String. If you provide one it will appended to the
     );   // symbolic link. Some drivers register multiple interfaces for the same device
@@ -304,10 +306,10 @@ _Use_decl_annotations_
 NTSTATUS IddRustDeskDeviceD0Entry(WDFDEVICE Device, WDF_POWER_DEVICE_STATE PreviousState)
 {
     UNREFERENCED_PARAMETER(PreviousState);
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC!");
     // This function is called by WDF to start the device in the fully-on power state.
     auto* pContext = WdfObjectGet_IndirectDeviceContextWrapper(Device);
     pContext->pContext->InitAdapter();
-
     return STATUS_SUCCESS;
 }
 
@@ -364,7 +366,6 @@ HRESULT Direct3DDevice::Init()
         // system is in a transient state.
         return hr;
     }
-
     return S_OK;
 }
 
@@ -376,7 +377,6 @@ SwapChainProcessor::SwapChainProcessor(IDDCX_SWAPCHAIN hSwapChain, shared_ptr<Di
     : m_hSwapChain(hSwapChain), m_Device(Device), m_hAvailableBufferEvent(NewFrameEvent)
 {
     m_hTerminateEvent.Attach(CreateEvent(nullptr, FALSE, FALSE, nullptr));
-
     // Immediately create and run the swap-chain processing thread, passing 'this' as the thread parameter
     m_hThread.Attach(CreateThread(nullptr, 0, RunThread, this, 0, nullptr));
 }
@@ -385,7 +385,6 @@ SwapChainProcessor::~SwapChainProcessor()
 {
     // Alert the swap-chain processing thread to terminate
     SetEvent(m_hTerminateEvent.Get());
-
     if (m_hThread.Get()) {
         // Wait for the thread to terminate
         WaitForSingleObject(m_hThread.Get(), INFINITE);
@@ -404,14 +403,11 @@ void SwapChainProcessor::Run()
     // prioritize this thread for improved throughput in high CPU-load scenarios.
     DWORD AvTask = 0;
     HANDLE AvTaskHandle = AvSetMmThreadCharacteristics(_T("Distribution"), &AvTask);
-
     RunCore();
-
     // Always delete the swap-chain object when swap-chain processing loop terminates in order to kick the system to
     // provide a new swap-chain if necessary.
     WdfObjectDelete((WDFOBJECT)m_hSwapChain);
     m_hSwapChain = nullptr;
-
     AvRevertMmThreadCharacteristics(AvTaskHandle);
 }
 
@@ -528,7 +524,7 @@ IndirectDeviceContext::IndirectDeviceContext(_In_ WDFDEVICE WdfDevice)
     , m_WdfDevice(WdfDevice)
 {
     m_Adapter = {};
-
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC!");
     for (UINT i = 0; i < m_sMaxMonitorCount; i++) {
         m_Monitors[i] = NULL;
     }
@@ -536,6 +532,7 @@ IndirectDeviceContext::IndirectDeviceContext(_In_ WDFDEVICE WdfDevice)
 
 IndirectDeviceContext::~IndirectDeviceContext()
 {
+    TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC!");
     for (UINT i = 0; i < m_sMaxMonitorCount; i++) {
         if (m_Monitors[i] != NULL) {
             // TODO: Plug out monitor
@@ -645,9 +642,7 @@ void IndirectDeviceContext::FinishInit(UINT ConnectorIndex)
     IDARG_OUT_MONITORCREATE MonitorCreateOut;
     NTSTATUS Status = IddCxMonitorCreate(m_Adapter, &MonitorCreate, &MonitorCreateOut);
     if (NT_SUCCESS(Status)) {
-        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
-            "%!FUNC! create monitor done");
-
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE, "%!FUNC! create monitor done!");
         // Create a new monitor context object and attach it to the Idd monitor object
         auto* pMonitorContextWrapper = WdfObjectGet_IndirectMonitorContextWrapper(MonitorCreateOut.MonitorObject);
         pMonitorContextWrapper->pContext = new IndirectMonitorContext(MonitorCreateOut.MonitorObject);
@@ -737,9 +732,7 @@ NTSTATUS IndirectDeviceContext::PlugInMonitor(PCtlPlugIn Param)
     IDARG_OUT_MONITORCREATE MonitorCreateOut;
     NTSTATUS Status = IddCxMonitorCreate(m_Adapter, &MonitorCreate, &MonitorCreateOut);
     if (NT_SUCCESS(Status)) {
-        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE,
-            "%!FUNC! create monitor done");
-
+        TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DEVICE, "%!FUNC! create monitor done.");
         // Tell the OS that the monitor has been plugged in
         IDARG_OUT_MONITORARRIVAL ArrivalOut;
         Status = IddCxMonitorArrival(MonitorCreateOut.MonitorObject, &ArrivalOut);
