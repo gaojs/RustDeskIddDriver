@@ -124,13 +124,11 @@ int __cdecl main(int argc, char* argv[])
             break;
         case 's': { // switch
             printf("Change resolution, current index %u\n", index - 1);
-            MonitorMode mode = {800, 600, 30};
+            MonitorMode mode = {800, 600, 60};
             printf("width:");
-            int n = scanf_s("%ld", &mode.width);
+            scanf_s("%ld", &mode.width);
             printf("height:");
-            int n2 = scanf_s("%ld", &mode.height);
-            printf("sync:");
-            int n3 = scanf_s("%ld", &mode.sync);
+            scanf_s("%ld", &mode.height);
             if (!MonitorModesUpdate(mode)) {
                 printf(GetLastMsg());
             } else {
