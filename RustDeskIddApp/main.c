@@ -116,6 +116,9 @@ int __cdecl main(int argc, char* argv[])
                 printf(GetLastMsg());
             } else {
                 printf("Change resolution done\n");
+                if (MonitorPlugOut()) {
+                  MonitorPlugIn(0);
+                }
             }
         } break;
         case 'q':
