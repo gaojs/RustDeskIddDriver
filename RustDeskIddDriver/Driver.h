@@ -37,18 +37,10 @@ namespace Microsoft
         /// <summary>
         /// Manages the creation and lifetime of a Direct3D render device.
         /// </summary>
-        struct IndirectSampleMonitor
-        {
-            static constexpr size_t szEdidBlock = 128;
-            static constexpr size_t szModeList = 1;
-
-            const BYTE pEdidBlock[szEdidBlock];
-            struct SampleMonitorMode {
-                DWORD Width;
-                DWORD Height;
-                DWORD VSync;
-            } pModeList[szModeList];
-            DWORD ulPreferredModeIdx;
+        struct SampleMonitorMode {
+            DWORD Width;
+            DWORD Height;
+            DWORD VSync;
         };
 
         /// <summary>

@@ -41,7 +41,6 @@ int __cdecl main(int argc, char* argv[])
 {
     HSWDEVICE hSwDevice = NULL;
     BOOL bExit = FALSE;
-    UINT index = 0;
 
     TCHAR exePath[1024] = { 0, };
     (void)GetModuleFileName(NULL, exePath, sizeof(exePath)/sizeof(exePath[0]) - 1);
@@ -91,30 +90,23 @@ int __cdecl main(int argc, char* argv[])
             printf("Close device done\n");
             break;
         case 'a':
-            printf("Plug in monitor begin, current index %u\n", index);
-            if (!MonitorPlugIn(index, 0, 0)) {
+            printf("Plug in monitor begin\n");
+            if (!MonitorPlugIn(0)) {
                 printf(GetLastMsg());
             } else {
                 printf("Plug in monitor done\n");
-                index += 1;
             }
             break;
         case 'b':
-            if (index == 0) {
-                printf("No virtual monitors\n");
-                break;
-            }
-
-            printf("Plug out monitor begin, current index %u\n", index - 1);
-            if (!MonitorPlugOut(index - 1)) {
+            printf("Plug out monitor begin\n");
+            if (!MonitorPlugOut()) {
                 printf(GetLastMsg());
             } else {
-                index -= 1;
                 printf("Plug out monitor done\n");
             }
             break;
         case 's': { // switch
-            printf("Change resolution, current index %u\n", index - 1);
+            printf("Change resolution\n");
             MonitorMode mode = {800, 600, 60};
             printf("width:");
             scanf_s("%ld", &mode.width);
@@ -123,7 +115,7 @@ int __cdecl main(int argc, char* argv[])
             if (!MonitorModesUpdate(mode)) {
                 printf(GetLastMsg());
             } else {
-                printf("Change resolution done\n");            
+                printf("Change resolution done\n");
             }
         } break;
         case 'q':

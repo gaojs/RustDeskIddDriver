@@ -281,7 +281,7 @@ VOID DeviceClose(HSWDEVICE hSwDevice)
     }
 }
 
-BOOL MonitorPlugIn(UINT index, UINT edid, INT retries)
+BOOL MonitorPlugIn(INT retries)
 {
     SetLastMsg("Success");
 
@@ -313,8 +313,8 @@ BOOL MonitorPlugIn(UINT index, UINT edid, INT retries)
     BOOL ret = FALSE;
     DWORD junk = 0;
     CtlPlugIn plugIn = {0};
-    plugIn.ConnectorIndex = index;
-    plugIn.MonitorEDID = edid;
+    plugIn.ConnectorIndex = 0;
+    plugIn.MonitorEDID = 0;
     HRESULT hr = CoCreateGuid(&plugIn.ContainerId);
     if (!SUCCEEDED(hr))
     {
@@ -356,7 +356,7 @@ BOOL MonitorPlugIn(UINT index, UINT edid, INT retries)
     return ret;
 }
 
-BOOL MonitorPlugOut(UINT index)
+BOOL MonitorPlugOut()
 {
     SetLastMsg("Success");
 
@@ -369,7 +369,7 @@ BOOL MonitorPlugOut(UINT index)
     BOOL ret = FALSE;
     DWORD junk = 0;
     CtlPlugOut plugOut = {0};
-    plugOut.ConnectorIndex = index;
+    plugOut.ConnectorIndex = 0;
     if (!DeviceIoControl(
         hDevice,
         IOCTL_CHANGER_IDD_PLUG_OUT,
@@ -575,7 +575,7 @@ BOOLEAN GetDevicePath2(
     ULONG                               predictedLength = 0;
     ULONG                               requiredLength = 0;
     HDEVINFO                            hardwareDeviceInfo = 0;
-    SP_DEVICE_INTERFACE_DATA            deviceInterfaceData ={0};
+    SP_DEVICE_INTERFACE_DATA            deviceInterfaceData = {0};
     BOOLEAN                             status = FALSE;
     HRESULT                             hr;
 
